@@ -5,7 +5,7 @@ Maple is a straigtforward implementation of a basic, tick synced multiplayer arc
 
 It's lightweight and easy to use as well as extendable.
 
-For a demo run `node run.js` and open `index.html` in a Browser with WebSocket support.
+For a demo run `node run.js` and open `index.html` in a Browser with WebSocket support and watch your consoles.
 
 **ALPHA STAGE SOFTWARE**
 
@@ -13,7 +13,6 @@ I extracted and refactored this from a few other multiplayer tests I recently wr
 There might be some obvious bugs in here, which I'll sure find within the next few days when I port over one of the demo to Maple :)
 
 Most of the public API is documented, there a few things on the server side which will need cleanup but I need some sleep now :D
-
 
 ## Features
 
@@ -24,4 +23,12 @@ Most of the public API is documented, there a few things on the server side whic
 - Works with Node.js `>= v0.4`
 - [BiSON](https://github.com/BonsaiDen/BiSON.js) encoding for messages for low bandwidth ^.^"
 - [Neko.js](https://github.com/BonsaiDen/neko.js) for easy classes
+
+
+## TODO
+
+- Document all Public APIS
+- Add unit tests
+- Add more inline comments for syncing logic
+- Add more awesomeness and kittens!
 
