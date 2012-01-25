@@ -40,28 +40,29 @@ var Server = Class(function(clientClass) {
     this._clients = {};
     this._clientClass = clientClass || Server.Client;
 
+    function error(conn, type) {
+
+    }
+
+
     // Setup socket callbacks
     var that = this;
-    //this._socket.on('connection', function(conn, req) {
-        //that.connected(conn, req);
-    //});
-
     this._socket.on('data', function(conn, raw, binary) {
 
-        // Do some basic filtering
+        // Do some basic filtering to prevent easy ways
+        // of breaking the server
         var msg;
         try {
             msg = BISON.decode(raw);
 
         } catch(e) {
-            console.log('ERROR: Invalid BISON Message.');
+            error(conn, Maple.Error.INVALID_MESSAGE);
             conn.close();
             return;
         }
 
-        console.log(msg);
         if (msg.length < 2 || !(msg instanceof Array)) {
-            console.log('ERROR: Message too short.');
+            error(conn, Maple.Error.MESSAGE_TOO_SHORT);
             conn.close();
             return;
         }
@@ -93,8 +94,11 @@ var Server = Class(function(clientClass) {
             }
 
         } else if (client) {
-            // TODO if this doesn't handle it, delegate to client
-            that.message(client, type, tick, data);
+
+            if (that.message(client, type, tick, data) !== true) {
+                client.message(type, tick, data);
+            }
+
         }
 
     });
@@ -359,6 +363,10 @@ Server.Client = Class(function(server, conn) {
     this._server = server;
 
 }, {
+
+    message: function(type, tick, data) {
+
+    },
 
     /**
       * Sends a @msg {Array} to the server, @type {Number}.

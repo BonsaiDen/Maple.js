@@ -25,7 +25,7 @@
 /*global Class, Twist, BISON, MozWebSocket, Maple */
 
 /**
-  * {Maple} A game client for synced multiplayer games.
+  * {Maple.Client} A game client for synced multiplayer games.
   *
   * Maple is uses a tick based approach to syncing, it also handles client
   * side frame rate management.
@@ -60,9 +60,10 @@ var Client = Class(function(update, render) {
 }, Twist, {
 
     /**
-      * Connects with the Maple server at (@host {String} : @port {Number})
+      * {Boolean|Null} Connects with the Maple server at (@host {String} : @port {Number})
       *
       * Returns `false` in the case that there is already an open connection.
+      * Returns `null` in the case that WebSockets aren't supported.
       */
     connect: function(host, port) {
 
@@ -74,7 +75,12 @@ var Client = Class(function(update, render) {
         var ws = typeof WebSocket !== 'undefined' ? WebSocket : MozWebSocket;
 
         // Setup the socket
-        this._socket = new ws('ws://' + host + (port !== undefined ? ':' + port : ''));
+        try {
+            this._socket = new ws('ws://' + host + (port !== undefined ? ':' + port : ''));
+
+        } catch(e) {
+            return null;
+        }
 
         // Setup event handlers, also send intial message
         var that = this;
@@ -388,7 +394,7 @@ var Client = Class(function(update, render) {
       * The callback for when the connection to the server is closed.
       *
       * @byRemote {Boolean} is `true` in case the connect was forcefully closed by the server.
-      * @erroCode {Integer}
+      * @errorCode {Integer}
       */
     closed: function(byRemote, errorCode) {
 
