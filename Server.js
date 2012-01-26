@@ -88,7 +88,7 @@ var Server = Class(function(clientClass) {
         // More logic stuff
         this._randomSeed = 500000 + Math.floor((Math.random() * 1000000));
         this._randomState = 0;
-        this._logicRate = options.logicRate || 2;
+        this._logicRate = options.logicRate || 1;
         this._syncRate = options.syncRate || 30;
 
         this._isRunning = false;
