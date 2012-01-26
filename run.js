@@ -33,8 +33,8 @@ var Debug = Class(function(clientClass) {
         console.log('Started');
     },
 
-    update: function(time, tick) {
-        console.log(time, tick, this.getRandom());
+    update: function(t, tick) {
+        console.log(t, tick, this.getRandom());
         this.broadcast(5, ['Hello World']);
     },
 

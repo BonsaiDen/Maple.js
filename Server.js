@@ -24,6 +24,7 @@
 // Imports --------------------------------------------------------------------
 var BISON = require('./lib/bison'),
     Class = require('./lib/Class'),
+    HashList = require('./lib/HashList'),
     WebSocketServer = require('./lib/WebSocket'),
     Maple = require('./Maple');
 
@@ -37,79 +38,20 @@ var Server = Class(function(clientClass) {
     this._version = '0.1';
 
     // Clients
-    this._clients = {};
+    this._clients = new HashList();
     this._clientClass = clientClass || Server.Client;
-
-    function error(conn, type) {
-
-    }
-
 
     // Setup socket callbacks
     var that = this;
     this._socket.on('data', function(conn, raw, binary) {
-
-        // Do some basic filtering to prevent easy ways
-        // of breaking the server
-        var msg;
-        try {
-            msg = BISON.decode(raw);
-
-        } catch(e) {
-            error(conn, Maple.Error.INVALID_MESSAGE);
-            conn.close();
-            return;
-        }
-
-        if (msg.length < 2 || !(msg instanceof Array)) {
-            error(conn, Maple.Error.MESSAGE_TOO_SHORT);
-            conn.close();
-            return;
-        }
-
-        // Get message Details
-        var type = msg[0],
-            tick = msg[1],
-            data = msg.slice(2),
-            id = conn.id,
-            client = that._clients.hasOwnProperty(id);
-
-        if (type === Maple.Message.CONNECT) {
-
-            if (!client) {
-
-                that._clients[id] = new that._clientClass(that, conn);
-                that._clients[id].send(Maple.Message.START, [
-                    that._tickRate,
-                    that._logicRate,
-                    that._syncRate,
-                    that._randomSeed
-                ]);
-
-                that.connected(that._clients[id]);
-
-            } else {
-                delete that._clients[id];
-                conn.close();
-            }
-
-        } else if (client) {
-
-            if (that.message(client, type, tick, data) !== true) {
-                client.message(type, tick, data);
-            }
-
-        }
-
+        that._data(conn, raw);
     });
 
     this._socket.on('end', function(conn) {
 
-        var id = conn.id;
-        if (that._clients.hasOwnProperty(id)) {
-            that.disconnected(that._clients[id]);
-            delete that._clients[id];
-        }
+        var client = that._clients.get(conn.id);
+        that._clients.remove(client);
+        that.disconnected(client);
 
     });
 
@@ -199,14 +141,13 @@ var Server = Class(function(clientClass) {
             clients = this._clients;
         }
 
-        for(var i in clients) {
+        this._clients.each(function(client) {
 
-            var client = this._clients[i];
             if (!excluded || excluded.indexOf(client) === -1) {
                 this._bytesSend += client.sendRaw(data);
             }
 
-        }
+        });
 
     },
 
@@ -225,6 +166,62 @@ var Server = Class(function(clientClass) {
 
 
     // Internal handling of update logic --------------------------------------
+    _data: function(conn, raw) {
+
+        // Do some basic filtering to prevent easy ways
+        // of breaking the server
+        var msg;
+        try {
+            msg = BISON.decode(raw);
+
+        } catch(e) {
+            error(conn, Maple.Error.INVALID_MESSAGE);
+            conn.close();
+            return;
+        }
+
+        if (msg.length < 2 || !(msg instanceof Array)) {
+            error(conn, Maple.Error.MESSAGE_TOO_SHORT);
+            conn.close();
+            return;
+        }
+
+        // Get message Details
+        var type = msg[0],
+            tick = msg[1],
+            data = msg.slice(2),
+            client = this._clients.get(conn.id);
+
+        if (type === Maple.Message.CONNECT) {
+
+            if (!client) {
+
+                var client = new this._clientClass(this, conn);
+                this._clients.add(client);
+                client.send(Maple.Message.START, [
+                    this._tickRate,
+                    this._logicRate,
+                    this._syncRate,
+                    this._randomSeed
+                ]);
+
+                this.connected(client);
+
+            } else {
+                this._clients.remove(client);
+                conn.close();
+            }
+
+        } else if (client) {
+
+            if (this.message(client, type, tick, data) !== true) {
+                client.message(type, tick, data);
+            }
+
+        }
+
+    },
+
     _update: function() {
 
         var now = Date.now();
@@ -289,6 +286,15 @@ var Server = Class(function(clientClass) {
       * @client {Server.Client}
       */
     connected: function(client) {
+
+    },
+
+    /**
+      * Callback for when a client disconnects from the server.
+      *
+      * @client {Server.Client}
+      */
+    disconnected: function(client) {
 
     },
 
@@ -380,7 +386,7 @@ Server.Client = Class(function(server, conn) {
         }
 
         // Make the message as small as possible and send it
-        this._conn.send(BISON.encode(msg));
+        return this._conn.send(BISON.encode(msg));
 
     },
 
