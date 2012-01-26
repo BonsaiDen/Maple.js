@@ -21,24 +21,36 @@
   */
 (function() {
 
+    // Maple itself will always use negative numbers
+    // So games are free to any positive value they like
     var Message = {
-        CONNECT: 0,
-        START: 1,
-        END: 2
+        CONNECT: -1,
+        START: -2,
+        END: -3,
+        ERROR: -4
+    };
+
+    var Error = {
+        INVALID_DATA: -1,
+        MESSAGE_TOO_SHORT: -2,
+        ALREADY_CONNECTED: -3,
+        UNSUPPORTED_VERSION: -4
     };
 
     // Switch between Server and Client
     if (typeof window === 'undefined') {
         module.exports = {
             Server: null,
-            Message: Message
+            Message: Message,
+            Error: Error
         };
 
         module.exports.Server = require('./Server');
 
     } else {
         window.Maple = {
-            Message: Message
+            Message: Message,
+            Error: Error
         };
     }
 

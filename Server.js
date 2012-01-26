@@ -35,7 +35,6 @@ var Server = Class(function(clientClass) {
 
     // Socket
     this._socket = new WebSocketServer();
-    this._version = '0.1';
 
     // Clients
     this._clients = new HashList();
@@ -49,9 +48,11 @@ var Server = Class(function(clientClass) {
 
     this._socket.on('end', function(conn) {
 
-        var client = that._clients.get(conn.id);
-        that._clients.remove(client);
-        that.disconnected(client);
+        var client = that._clients.get(conn);
+        if (client) {
+            that._clients.remove(client);
+            that.disconnected(client);
+        }
 
     });
 
@@ -60,6 +61,8 @@ var Server = Class(function(clientClass) {
     });
 
 }, {
+
+    $version: '0.1',
 
     /**
       * {Booelan} Starts the server in case it's not already running.
@@ -88,8 +91,8 @@ var Server = Class(function(clientClass) {
         // More logic stuff
         this._randomSeed = 500000 + Math.floor((Math.random() * 1000000));
         this._randomState = 0;
-        this._logicRate = options.logicRate || 1;
-        this._syncRate = options.syncRate || 30;
+        this._logicRate = options.logicRate || 1; // Used for throttling logic ticks
+        this._syncRate = options.syncRate || 30; // Send down tick count to clients every X updates
 
         this._isRunning = false;
 
@@ -165,7 +168,7 @@ var Server = Class(function(clientClass) {
     },
 
 
-    // Internal handling of update logic --------------------------------------
+    // Handling of incoming data and game logic -------------------------------
     _data: function(conn, raw) {
 
         // Do some basic filtering to prevent easy ways
@@ -175,14 +178,12 @@ var Server = Class(function(clientClass) {
             msg = BISON.decode(raw);
 
         } catch(e) {
-            error(conn, Maple.Error.INVALID_MESSAGE);
-            conn.close();
+            this._error(conn, Maple.Error.INVALID_DATA);
             return;
         }
 
         if (msg.length < 2 || !(msg instanceof Array)) {
-            error(conn, Maple.Error.MESSAGE_TOO_SHORT);
-            conn.close();
+            this._error(conn, Maple.Error.MESSAGE_TOO_SHORT);
             return;
         }
 
@@ -192,24 +193,31 @@ var Server = Class(function(clientClass) {
             data = msg.slice(2),
             client = this._clients.get(conn.id);
 
+        // More checks for new connections
         if (type === Maple.Message.CONNECT) {
 
             if (!client) {
 
-                var client = new this._clientClass(this, conn);
-                this._clients.add(client);
-                client.send(Maple.Message.START, [
-                    this._tickRate,
-                    this._logicRate,
-                    this._syncRate,
-                    this._randomSeed
-                ]);
+                if (typeof data[0] !== 'string' || data[0] !== Server.$version) {
+                    this._error(conn, Maple.Error.UNSUPPORTED_VERSION);
 
-                this.connected(client);
+                } else {
+                    client = new this._clientClass(this, conn);
+                    this._clients.add(client);
+
+                    client.send(Maple.Message.START, [
+                        this._tickRate,
+                        this._logicRate,
+                        this._syncRate,
+                        this._randomSeed
+                    ]);
+
+                    this.connected(client);
+                }
 
             } else {
+                this._error(conn, Maple.Error.ALREADY_CONNECTED);
                 this._clients.remove(client);
-                conn.close();
             }
 
         } else if (client) {
@@ -220,6 +228,11 @@ var Server = Class(function(clientClass) {
 
         }
 
+    },
+
+    _error: function(conn, type) {
+        conn.send(BISON.encode([Maple.Message.ERROR, 0, type]));
+        conn.close();
     },
 
     _update: function() {
@@ -305,6 +318,9 @@ var Server = Class(function(clientClass) {
       * @type {Integer} Message type
       * @tick {Integer} Client side tick at which the message was send.
       * @data {Array} Message data
+      *
+      * Return `true` to indicate that the message was handled and prevent it
+      * from being forwarded to {Maple.Client#message}.
       */
     message: function(client, type, tick, data) {
 
@@ -370,6 +386,10 @@ Server.Client = Class(function(server, conn) {
 
 }, {
 
+    /**
+      * Handler for messages received by the client which were not handled
+      * by the server
+      */
     message: function(type, tick, data) {
 
     },
@@ -391,7 +411,7 @@ Server.Client = Class(function(server, conn) {
     },
 
     /**
-      * TODO: Add Description
+      * {Integer} Sends down the raw @data {String} to the client
       */
     sendRaw: function(data) {
         return this._conn.send(data);

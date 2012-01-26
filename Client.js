@@ -37,8 +37,6 @@ var Client = Class(function(update, render) {
     Twist.init(this, update, render);
     this._socket = null;
 
-    this._version = '0.1';
-
     // Syncing of time / ticks
     this._tickRate = 0;
     this._tickCount = 0;
@@ -59,6 +57,8 @@ var Client = Class(function(update, render) {
 
 }, Twist, {
 
+    $version: '0.1',
+
     /**
       * {Boolean|Null} Connects with the Maple server at (@host {String} : @port {Number})
       *
@@ -71,10 +71,12 @@ var Client = Class(function(update, render) {
             return false;
         }
 
-        // Figure out which object to use... Firefox...... ... ...
+        // Figure out which object to use
         var ws = typeof WebSocket !== 'undefined' ? WebSocket : MozWebSocket;
 
         // Setup the socket
+        // If the connection get's rejected, this won't throw but instead
+        // call `onclose()`
         try {
             this._socket = new ws('ws://' + host + (port !== undefined ? ':' + port : ''));
 
@@ -85,7 +87,7 @@ var Client = Class(function(update, render) {
         // Setup event handlers, also send intial message
         var that = this;
         this._socket.onopen = function() {
-            that.send(Maple.Message.CONNECT, [that._version]);
+            that.send(Maple.Message.CONNECT, [Client.$version]);
         };
 
         this._socket.onmessage = function(msg) {
@@ -198,13 +200,15 @@ var Client = Class(function(update, render) {
 
             var diff = msg - this._serverTick;
 
-            if (diff < 0 ) {
+            // Wrap around and increase base by 250
+            if (diff < 0) {
                 this._baseTick++;
             }
 
             this._serverTick = msg;
             this._tickSyncTime = Date.now();
             this._tickCount = this._baseTick * 250 + msg;
+
             return false;
 
         }
@@ -238,6 +242,9 @@ var Client = Class(function(update, render) {
 
     },
 
+    /**
+      * Handle messages which aren't bound to a given tick.
+      */
     _handleMessage: function(type, tick, data) {
 
         switch(type) {
@@ -260,15 +267,27 @@ var Client = Class(function(update, render) {
                 Twist.start(this);
 
                 this.started();
+                break;
 
-                return true;
+            case Maple.Message.ERROR:
+                this.error(data[0]);
+                break;
 
+            default:
+                return this.message(type, tick, data) || false;
         }
 
-        return this.message(type, tick, data) || false;
+        // Return true in case we handled the message
+        return true;
 
     },
 
+    /**
+      * Handles basic synced messages directly implements by Maple.
+      *
+      * Synced messages are messages which need to be handled at the exact
+      * tick cout they were send off at the server.
+      */
     _handleSyncedMessage: function(type, tick, data) {
 
         switch(type) {
@@ -283,6 +302,10 @@ var Client = Class(function(update, render) {
 
     },
 
+    /**
+      * Walk through all pending messages. This ensures that they're always
+      * handled with the gametick they were send off at the server.
+      */
     _processMessageQueue: function(flush) {
 
         // Sort messaged based on UID to ensure correct order
@@ -391,9 +414,19 @@ var Client = Class(function(update, render) {
     },
 
     /**
-      * The callback for when the connection to the server is closed.
+      * The callback for when an error occurs and the server terminates the
+      * connection
       *
-      * @byRemote {Boolean} is `true` in case the connect was forcefully closed by the server.
+      * @type {Integer} The Error ID from {Maple.Error}
+      */
+    error: function(type) {
+
+    },
+
+    /**
+      * The callback for when the connection to the server was closed.
+      *
+      * @byRemote {Boolean} is `true` in case the connect was closed *by* the server.
       * @errorCode {Integer}
       */
     closed: function(byRemote, errorCode) {
