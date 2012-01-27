@@ -6,9 +6,9 @@ architecture, that's lightweight and easy to extend.
 
 ## Demo
 
-1. Run `node run.js`
-2. Open `index.html` in a Browser with WebSocket support
-3. Check your Browser Console and see the magic happen.
+1. Run `node demo/server.js`
+2. Open `demo/index.html` in a Browser with WebSocket support
+3. Check your Browser Console and watch the magic happen!
 
 ## Features
 

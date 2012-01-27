@@ -1,5 +1,5 @@
 /**
-  * Copyright (c) 2011 Ivo Wetzel.
+  * Copyright (c) 2012 Ivo Wetzel.
   *
   * Permission is hereby granted, free of charge, to any person obtaining a copy
   * of this software and associated documentation files (the "Software"), to deal
@@ -19,12 +19,12 @@
   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   * THE SOFTWARE.
   */
-var Maple = require('./Maple'),
-    Class = require('./lib/Class');
+var Maple = require('../Maple'),
+    Class = require('../lib/Class');
 
 
 // Test -----------------------------------------------------------------------
-var Debug = Class(function(clientClass) {
+var Test = Class(function(clientClass) {
     Maple.Server.init(this, clientClass);
 
 }, Maple.Server, {
@@ -60,9 +60,7 @@ var Debug = Class(function(clientClass) {
 
 });
 
-
-
-var srv = new Debug();
+var srv = new Test();
 srv.start({
     port: 4000,
     logicRate: 10
