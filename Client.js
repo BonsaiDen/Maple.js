@@ -20,8 +20,6 @@
   * THE SOFTWARE.
   */
 
-(function() {
-
 /*global Class, Twist, BISON, MozWebSocket, Maple */
 
 /**
@@ -32,12 +30,11 @@
   *
   * Params: @update {Integer} and @render {Integer} frame rates.
   */
-var Client = Class(function(update, render) {
+Maple.Client = Class(function(update, render) {
 
     Twist.init(this, update, render);
     this._socket = null;
 
-    // Syncing of time / ticks
     this._tickRate = 0;
     this._tickCount = 0;
     this._tickSyncTime = -1;
@@ -48,7 +45,6 @@ var Client = Class(function(update, render) {
     this._syncRate = 0;
     this._logicRate = 0;
 
-    // Synced Random generator
     this._randomSeed = 0;
     this._randomState = 0;
 
@@ -87,7 +83,7 @@ var Client = Class(function(update, render) {
         // Setup event handlers, also send intial message
         var that = this;
         this._socket.onopen = function() {
-            that.send(Maple.Message.CONNECT, [Client.$version]);
+            that.send(Maple.Message.CONNECT, [Maple.Client.$version]);
         };
 
         this._socket.onmessage = function(msg) {
@@ -213,7 +209,7 @@ var Client = Class(function(update, render) {
 
         }
 
-        // Real messages ------------------------------------------------------
+        // Real messages
         var type = msg[0],
             tick = msg[1],
             data = msg.slice(2);
@@ -224,7 +220,6 @@ var Client = Class(function(update, render) {
 
             // Messages which need to be in sync with the tick count
             // these will be processed right before the next gam tick
-            // -----------------------------------------------------
             if (!flush && tick > 0 && tick > this._lastTick) {
 
                 if (initial) {
@@ -482,8 +477,4 @@ var Client = Class(function(update, render) {
     }
 
 });
-
-Maple.Client = Client;
-
-})();
 
