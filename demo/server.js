@@ -20,12 +20,12 @@
   * THE SOFTWARE.
   */
 var Maple = require('../Maple'),
-    Class = require('../lib/Class');
+    Class = require('../lib/Class').Class;
 
 
 // Test -----------------------------------------------------------------------
 var Test = Class(function(clientClass) {
-    Maple.Server.init(this, clientClass);
+    Maple.Server(this, clientClass);
 
 }, Maple.Server, {
 

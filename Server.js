@@ -23,7 +23,7 @@
 
 // Imports --------------------------------------------------------------------
 var BISON = require('./lib/bison'),
-    Class = require('./lib/Class'),
+    Class = require('./lib/Class').Class,
     HashList = require('./lib/HashList'),
     WebSocketServer = require('./lib/WebSocket'),
     Maple = require('./Maple');

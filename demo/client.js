@@ -22,7 +22,7 @@
 
 /*global Class, Maple */
 var Test = Class(function() {
-    Maple.Client.init(this, 30, 60);
+    Maple.Client(this, 30, 60);
 
 }, Maple.Client, {
 

@@ -32,7 +32,7 @@
   */
 Maple.Client = Class(function(update, render) {
 
-    Twist.init(this, update, render);
+    Twist(this, update, render);
     this._socket = null;
 
     this._tickRate = 0;
