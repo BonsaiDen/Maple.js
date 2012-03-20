@@ -19,12 +19,11 @@
   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
   * THE SOFTWARE.
   */
-var Maple = require('../Maple'),
-    Class = require('../lib/Class').Class;
-
+var Maple = require('../Maple');
+console.log(Maple);
 
 // Test -----------------------------------------------------------------------
-var Test = Class(function(clientClass) {
+var Test = Maple.Class(function(clientClass) {
     Maple.Server(this, clientClass);
 
 }, Maple.Server, {

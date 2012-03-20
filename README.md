@@ -12,12 +12,12 @@ architecture, that's lightweight and easy to extend.
 
 ## Features
 
-- Synced tick count, gametime, pseudo rng and message queue
-- Ships with `Twist` - a awesome JS GameLoop
+- Synced tick count, gametime, pseudo RNG and message queue
+- Ships with `Twist` - a awesome JS game loop
 - WebSocket support for all existing Drafts
 - Works with Node.js `v0.4` and later
 - Uses [BiSON](https://github.com/BonsaiDen/BiSON.js) for lowest possible bandwidth
-- Comes with [Neko.js](https://github.com/BonsaiDen/neko.js) for simple `Class` abstraction
+- Comes with a simple Class abstraction
 
 
 ## TODO

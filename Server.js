@@ -31,14 +31,14 @@ var BISON = require('./lib/bison'),
 
 // Main Server ----------------------------------------------------------------
 // ----------------------------------------------------------------------------
-var Server = Class(function(clientClass) {
+Maple.Server = Class(function(clientClass) {
 
     // Socket
     this._socket = new WebSocketServer();
 
     // Clients
     this._clients = new HashList();
-    this._clientClass = clientClass || Server.Client;
+    this._clientClass = clientClass || Maple.Server.Client;
 
     // Setup socket callbacks
     var that = this;
@@ -198,7 +198,7 @@ var Server = Class(function(clientClass) {
 
             if (!client) {
 
-                if (typeof data[0] !== 'string' || data[0] !== Server.$version) {
+                if (typeof data[0] !== 'string' || data[0] !== Maple.Server.$version) {
                     this._error(conn, Maple.Error.UNSUPPORTED_VERSION);
 
                 } else {
@@ -375,11 +375,11 @@ var Server = Class(function(clientClass) {
 
 
 /**
-  * {Server.Client} Simple client abstraction for the Maple Server.
+  * {Maple.Server.Client} Simple client abstraction for the Maple Server.
   *
   * @conn {WebSocketConnection}
   */
-Server.Client = Class(function(server, conn) {
+Maple.Server.Client = Class(function(server, conn) {
     this.id = conn.id;
     this._conn = conn;
     this._server = server;
@@ -418,6 +418,4 @@ Server.Client = Class(function(server, conn) {
     }
 
 });
-
-module.exports = Server;
 

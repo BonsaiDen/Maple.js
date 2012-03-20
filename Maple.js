@@ -22,7 +22,7 @@
 (function() {
 
     // Maple itself will always use negative numbers
-    // So games are free to any positive value they like
+    // So games are free to make use of any positive value they like
     var Message = {
         CONNECT: -1,
         START: -2,
@@ -39,13 +39,16 @@
 
     // Switch between Server and Client
     if (typeof window === 'undefined') {
+
         module.exports = {
             Server: null,
             Message: Message,
             Error: Error
         };
 
-        module.exports.Server = require('./Server');
+        module.exports.HashList = require('./lib/HashList');
+        module.exports.Class = require('./lib/Class').Class;
+        require('./Server');
 
     } else {
         window.Maple = {
