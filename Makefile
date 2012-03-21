@@ -2,7 +2,7 @@ all: build/Client.js build/Server.js
 
 
 CLIENT_FILES = lib/bison.js lib/Class.js lib/Twist.js Maple.js Client.js
-build/Client.js: $(CLIENT_FILES)
+build/Client.js: Makefile $(CLIENT_FILES)
 	echo "Packaging Client..."
 	@mkdir -p build
 	@touch build/Client.js
@@ -14,7 +14,7 @@ build/Client.js: $(CLIENT_FILES)
 
 
 SERVER_FILES=lib/bison.js lib/Class.js lib/WebSocket.js lib/HashList.js Maple.js Server.js
-build/Server.js: $(SERVER_FILES)
+build/Server.js: Makefile $(SERVER_FILES)
 	echo "Packaging Server..."
 	@mkdir -p build
 	@echo "(function(req) {" > build/Server.js
@@ -34,7 +34,7 @@ build/Server.js: $(SERVER_FILES)
 	   	cat $${file}; \
 	   	echo "})(modules['./$${file%.js}'], modules['./$${file%.js}'].exports);\n"; \
 	done >> build/Server.js
-	@echo "module.exports = modules['./Maple'];" >> build/Server.js
+	@echo "module.exports = modules['./Maple'].exports;" >> build/Server.js
 	@echo "})(require);" >> build/Server.js
 	@uglifyjs --mangle-private -nc build/Server.js > build/Server.min.js
 

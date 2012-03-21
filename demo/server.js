@@ -20,7 +20,7 @@
   * THE SOFTWARE.
   */
 var Maple = require('../Maple');
-console.log(Maple);
+
 
 // Test -----------------------------------------------------------------------
 var Test = Maple.Class(function(clientClass) {
