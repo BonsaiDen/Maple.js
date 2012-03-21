@@ -1,5 +1,9 @@
+all: build/Client.js build/Server.js
+
+
 CLIENT_FILES = lib/bison.js lib/Class.js lib/Twist.js Maple.js Client.js
 build/Client.js: $(CLIENT_FILES)
+	echo "Packaging Client..."
 	@mkdir -p build
 	@touch build/Client.js
 	@for i in $(CLIENT_FILES); do \
@@ -9,11 +13,9 @@ build/Client.js: $(CLIENT_FILES)
 	@uglifyjs --mangle-private -nc build/Client.js > build/Client.min.js
 
 
-
-
-.PHONY: build/Server.js
 SERVER_FILES=lib/bison.js lib/Class.js lib/WebSocket.js lib/HashList.js Maple.js Server.js
 build/Server.js: $(SERVER_FILES)
+	echo "Packaging Server..."
 	@mkdir -p build
 	@echo "(function(req) {" > build/Server.js
 	@echo "var modules = {};" >> build/Server.js
@@ -27,13 +29,14 @@ build/Server.js: $(SERVER_FILES)
 	@echo "    return req(path);" >> build/Server.js
 	@echo "}" >> build/Server.js
 	@for file in $(SERVER_FILES); do \
-	   	echo '\n\n// ${file}----------------------------' >> build/Server.js; \
-	   	echo '(function(module, exports) {\n' >> build/Server.js; \
-	   	cat $${file} >> build/Server.js; \
-	   	echo "})(modules['./$${file%.js}'], modules['./$${file%.js}'].exports);\n" >> build/Server.js; \
-	done
+	   	echo '\n\n// ${file}----------------------------'; \
+	   	echo '(function(module, exports) {\n'; \
+	   	cat $${file}; \
+	   	echo "})(modules['./$${file%.js}'], modules['./$${file%.js}'].exports);\n"; \
+	done >> build/Server.js
 	@echo "module.exports = modules['./Maple'];" >> build/Server.js
 	@echo "})(require);" >> build/Server.js
+	@uglifyjs --mangle-private -nc build/Server.js > build/Server.min.js
 
 
 .PHONY: clean
