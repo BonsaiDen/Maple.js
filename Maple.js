@@ -26,8 +26,9 @@
     var Message = {
         CONNECT: -1,
         START: -2,
-        END: -3,
-        ERROR: -4
+        STOP: -3,
+        ERROR: -4,
+        SYNC: -5
     };
 
     var Error = {

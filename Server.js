@@ -150,7 +150,7 @@ Maple.Server = Class(function(clientClass) {
                 this._bytesSend += client.sendRaw(data);
             }
 
-        });
+        }, this);
 
     },
 
@@ -162,6 +162,11 @@ Maple.Server = Class(function(clientClass) {
 
         this._isRunning = false;
         clearInterval(this._tickInterval);
+
+        this.broadcast(Maple.Message.STOP);
+        this._clients.each(function(client) {
+            client.close();
+        });
 
         return true;
 
@@ -205,7 +210,7 @@ Maple.Server = Class(function(clientClass) {
                     client = new this._clientClass(this, conn);
                     this._clients.add(client);
 
-                    client.send(Maple.Message.START, [
+                    this._bytesSend += client.send(Maple.Message.START, [
                         this._tickRate,
                         this._logicRate,
                         this._syncRate,
@@ -222,7 +227,12 @@ Maple.Server = Class(function(clientClass) {
 
         } else if (client) {
 
-            if (this.message(client, type, tick, data) !== true) {
+            // Handle time sync and ping detection
+            // we simply echo back here
+            if (type === Maple.Message.SYNC) {
+                this._bytesSend += client.send(Maple.Message.SYNC, data);
+
+            } else if (this.message(client, type, tick, data) !== true) {
                 client.message(type, tick, data);
             }
 
@@ -231,7 +241,7 @@ Maple.Server = Class(function(clientClass) {
     },
 
     _error: function(conn, type) {
-        conn.send(BISON.encode([Maple.Message.ERROR, 0, type]));
+        this._bytesSend += conn.send(BISON.encode([Maple.Message.ERROR, 0, type]));
         conn.close();
     },
 

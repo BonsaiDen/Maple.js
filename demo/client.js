@@ -48,6 +48,7 @@ var Test = Class(function() {
 
     message: function(type, tick, data) {
         console.log('message:', type, tick, data);
+        return true; // return true to mark this message as handled
     },
 
     syncedMessage: function(type, tick, data) {

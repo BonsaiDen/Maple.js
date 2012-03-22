@@ -51,6 +51,10 @@ Maple.Client = Class(function(update, render) {
     this._messageQueue = [];
     this._messageUid = 0;
 
+    this._ping = 0;
+    this._lastPingTime = -2000;
+    this._pingInterval = 500;
+
 }, Twist, {
 
     $version: '0.1',
@@ -176,6 +180,15 @@ Maple.Client = Class(function(update, render) {
 
         }
 
+        // Send out a ping
+        var realTime = Twist.getTime(this, true);
+        if (realTime - this._lastPingTime >= this._pingInterval) {
+            this.send(Maple.Message.SYNC, [realTime]);
+            this._lastPingTime = realTime;
+            console.log(this._pingInterval);
+            this._pingInterval = Math.min(this._pingInterval + 500, 8000);
+        }
+
     },
 
     _stop: function() {
@@ -228,6 +241,7 @@ Maple.Client = Class(function(update, render) {
                 }
 
             } else {
+                // this always returns true for now
                 ret = this._handleSyncedMessage(type, tick, data);
             }
 
@@ -268,6 +282,10 @@ Maple.Client = Class(function(update, render) {
                 this.error(data[0]);
                 break;
 
+            case Maple.Message.SYNC:
+                this._ping = (Twist.getTime(this, true) - data[0]) / 2;
+                break;
+
             default:
                 return this.message(type, tick, data) || false;
         }
@@ -281,19 +299,20 @@ Maple.Client = Class(function(update, render) {
       * Handles basic synced messages directly implements by Maple.
       *
       * Synced messages are messages which need to be handled at the exact
-      * tick cout they were send off at the server.
+      * tick count they were send off at the server.
       */
     _handleSyncedMessage: function(type, tick, data) {
 
         switch(type) {
 
-            case Maple.Message.END:
+            case Maple.Message.STOP:
                 this._stop();
                 return true;
 
         }
 
-        return this.syncedMessage(type, tick, data) || false;
+        this.syncedMessage(type, tick, data);
+        return true;
 
     },
 
@@ -308,6 +327,7 @@ Maple.Client = Class(function(update, render) {
             return a.uid - b.uid;
         });
 
+            console.log(this._messageQueue.length);
         for(var i = 0; i < this._messageQueue.length; i++) {
 
             if (this._message(this._messageQueue[i], false, flush)) {
@@ -461,6 +481,13 @@ Maple.Client = Class(function(update, render) {
             return tick;
         }
 
+    },
+
+    /**
+      * {Integer} Returns the ping to the server.
+      */
+    getPing: function() {
+        return this._ping;
     },
 
     /**
