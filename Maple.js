@@ -47,7 +47,7 @@
             Error: Error
         };
 
-        module.exports.HashList = require('./lib/HashList');
+        module.exports.ObjectList = require('./lib/ObjectList');
         module.exports.Class = require('./lib/Class').Class;
         require('./Server');
 

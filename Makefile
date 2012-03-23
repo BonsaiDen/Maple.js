@@ -14,7 +14,7 @@ build/Client.js: Makefile $(CLIENT_FILES)
 	@uglifyjs --mangle-private -nc build/Client.js >> build/Client.min.js
 
 
-SERVER_FILES=lib/bison.js lib/Class.js lib/WebSocket.js lib/HashList.js Maple.js Server.js
+SERVER_FILES=lib/bison.js lib/Class.js lib/WebSocket.js lib/ObjectList.js Maple.js Server.js
 build/Server.js: Makefile $(SERVER_FILES)
 	echo "Packaging Server..."
 	@mkdir -p build

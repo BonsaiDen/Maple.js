@@ -33,7 +33,7 @@ var Test = Maple.Class(function(clientClass) {
     },
 
     update: function(t, tick) {
-        console.log(t, tick, this.getRandom());
+        console.log(this.getClients().length, 'client(s) connected', t, tick, this.getRandom());
         this.broadcast(5, ['Hello World']);
     },
 
@@ -42,7 +42,7 @@ var Test = Maple.Class(function(clientClass) {
     },
 
     connected: function(client) {
-        console.log('Connected:', client);
+        console.log('Connected:', client.id);
     },
 
     message: function(client, type, tick, data) {
@@ -54,7 +54,7 @@ var Test = Maple.Class(function(clientClass) {
     },
 
     disconnected: function(client) {
-        console.log('Disconnected:', client);
+        console.log('Disconnected:', client.id);
     }
 
 });

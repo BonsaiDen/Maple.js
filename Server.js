@@ -24,7 +24,7 @@
 // Imports --------------------------------------------------------------------
 var BISON = require('./lib/bison'),
     Class = require('./lib/Class').Class,
-    HashList = require('./lib/HashList'),
+    ObjectList = require('./lib/ObjectList'),
     WebSocketServer = require('./lib/WebSocket'),
     Maple = require('./Maple');
 
@@ -37,7 +37,7 @@ Maple.Server = Class(function(clientClass) {
     this._socket = new WebSocketServer();
 
     // Clients
-    this._clients = new HashList();
+    this._clients = new ObjectList();
     this._clientClass = clientClass || Maple.Server.Client;
 
     // Setup socket callbacks
@@ -48,7 +48,7 @@ Maple.Server = Class(function(clientClass) {
 
     this._socket.on('end', function(conn) {
 
-        var client = that._clients.get(conn);
+        var client = that._clients.get(conn.clientId);
         if (client) {
             that._clients.remove(client);
             that.disconnected(client);
@@ -144,7 +144,7 @@ Maple.Server = Class(function(clientClass) {
             clients = this._clients;
         }
 
-        this._clients.each(function(client) {
+        this._clients.forEach(function(client) {
 
             if (!excluded || excluded.indexOf(client) === -1) {
                 this._bytesSend += client.sendRaw(data);
@@ -164,7 +164,7 @@ Maple.Server = Class(function(clientClass) {
         clearInterval(this._tickInterval);
 
         this.broadcast(Maple.Message.STOP);
-        this._clients.each(function(client) {
+        this._clients.forEach(function(client) {
             client.close();
         });
 
@@ -192,23 +192,25 @@ Maple.Server = Class(function(clientClass) {
             return;
         }
 
-        // Get message Details
+        // Get message details
         var type = msg[0],
             tick = msg[1],
             data = msg.slice(2),
-            client = this._clients.get(conn.id);
+            client = this._clients.get(conn.clientId);
 
         // More checks for new connections
         if (type === Maple.Message.CONNECT) {
 
             if (!client) {
 
+                // Throw up on unsupported version
                 if (typeof data[0] !== 'string' || data[0] !== Maple.Server.$version) {
                     this._error(conn, Maple.Error.UNSUPPORTED_VERSION);
 
+                // Add client to list and give the id to the connection
                 } else {
                     client = new this._clientClass(this, conn);
-                    this._clients.add(client);
+                    conn.clientId = this._clients.add(client);
 
                     this._bytesSend += client.send(Maple.Message.START, [
                         this._tickRate,
@@ -366,6 +368,13 @@ Maple.Server = Class(function(clientClass) {
       */
     getTick: function() {
         return this._tickCount;
+    },
+
+    /**
+      * {ObjectList} Returns the list of currently connected clients.
+      */
+    getClients: function() {
+        return this._clients;
     },
 
     /**
