@@ -50,6 +50,7 @@ Maple.Client = Class(function(update, render) {
 
     this._messageQueue = [];
     this._messageUid = 0;
+    this._messageArray = [0, 0];
 
     this._ping = 0;
     this._lastPingTime = -2000;
@@ -134,13 +135,15 @@ Maple.Client = Class(function(update, render) {
     send: function(type, data) {
 
         // Add type and tick to the message
-        var msg = [type, this.getTick()];
+        this._messageArray.length = 2;
+        this._messageArray[0] = type;
+        this._messageArray[1] = this.getTick();
         if (data !== undefined) {
-            msg.push.apply(msg, data);
+            this._messageArray.push.apply(this._messageArray, data);
         }
 
         // Make the message as small as possible and send it
-        this._socket.send(BISON.encode(msg));
+        this._socket.send(BISON.encode(this._messageArray));
 
     },
 
@@ -185,7 +188,6 @@ Maple.Client = Class(function(update, render) {
         if (realTime - this._lastPingTime >= this._pingInterval) {
             this.send(Maple.Message.SYNC, [realTime]);
             this._lastPingTime = realTime;
-            console.log(this._pingInterval);
             this._pingInterval = Math.min(this._pingInterval + 500, 8000);
         }
 
@@ -327,7 +329,6 @@ Maple.Client = Class(function(update, render) {
             return a.uid - b.uid;
         });
 
-            console.log(this._messageQueue.length);
         for(var i = 0; i < this._messageQueue.length; i++) {
 
             if (this._message(this._messageQueue[i], false, flush)) {

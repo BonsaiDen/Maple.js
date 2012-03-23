@@ -393,6 +393,7 @@ Maple.Server.Client = Class(function(server, conn) {
     this.id = conn.id;
     this._conn = conn;
     this._server = server;
+    this._messageArray = [0, 0];
 
 }, {
 
@@ -410,13 +411,16 @@ Maple.Server.Client = Class(function(server, conn) {
     send: function(type, data) {
 
         // Add type and tick to the message
-        var msg = [type, this._server.getTick()];
+        this._messageArray.length = 2;
+        this._messageArray[0] = type;
+        this._messageArray[1] = this._server.getTick();
+
         if (data !== undefined) {
-            msg.push.apply(msg, data);
+            this._messageArray.push.apply(this._messageArray, data);
         }
 
         // Make the message as small as possible and send it
-        return this._conn.send(BISON.encode(msg));
+        return this._conn.send(BISON.encode(this._messageArray));
 
     },
 
