@@ -33,32 +33,10 @@ var BISON = require('./lib/bison'),
 // ----------------------------------------------------------------------------
 Maple.Server = Class(function(clientClass) {
 
-    // Socket
-    this._socket = new WebSocketServer();
-
     // Clients
+    this._socket = null;
     this._clients = new ObjectList();
     this._clientClass = clientClass || Maple.Server.Client;
-
-    // Setup socket callbacks
-    var that = this;
-    this._socket.on('data', function(conn, raw, binary) {
-        that._data(conn, raw);
-    });
-
-    this._socket.on('end', function(conn) {
-
-        var client = that._clients.get(conn.clientId);
-        if (client) {
-            that._clients.remove(client);
-            that.disconnected(client);
-        }
-
-    });
-
-    this._socket.on('request', function(req, res) {
-        that.requested(req, res);
-    });
 
 }, {
 
@@ -106,7 +84,10 @@ Maple.Server = Class(function(clientClass) {
         this._tickCount = 1;
         this._isRunning = true;
 
-        this._socket.listen(options.port);
+        if (options.socket !== false) {
+            this._createSocket();
+            this._socket.listen(options.port);
+        }
 
         return true;
 
@@ -168,10 +149,40 @@ Maple.Server = Class(function(clientClass) {
             client.close();
         });
 
+        if (this._socket) {
+            this._socket.close();
+        }
+
         return true;
 
     },
 
+    _createSocket: function() {
+
+        // Socket
+        this._socket = new WebSocketServer();
+
+        // Setup socket callbacks
+        var that = this;
+        this._socket.on('data', function(conn, raw, binary) {
+            that._data(conn, raw);
+        });
+
+        this._socket.on('end', function(conn) {
+
+            var client = that._clients.get(conn.clientId);
+            if (client) {
+                that._clients.remove(client);
+                that.disconnected(client);
+            }
+
+        });
+
+        this._socket.on('request', function(req, res) {
+            that.requested(req, res);
+        });
+
+    },
 
     // Handling of incoming data and game logic -------------------------------
     _data: function(conn, raw) {
