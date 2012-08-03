@@ -42,7 +42,7 @@ var Test = Maple.Class(function(clientClass) {
     },
 
     connected: function(client) {
-        console.log('Connected:', client.id);
+        console.log('Connected:', client.id, client.isBinary);
     },
 
     message: function(client, type, tick, data) {

@@ -125,7 +125,7 @@ Maple.Server = Class(function(clientClass) {
             clients = this._clients;
         }
 
-        this._clients.forEach(function(client) {
+        this._clients.each(function(client) {
 
             if (!excluded || excluded.indexOf(client) === -1) {
                 this._bytesSend += client.sendRaw(data);
@@ -145,7 +145,7 @@ Maple.Server = Class(function(clientClass) {
         clearInterval(this._tickInterval);
 
         this.broadcast(Maple.Message.STOP);
-        this._clients.forEach(function(client) {
+        this._clients.each(function(client) {
             client.close();
         });
 
@@ -220,7 +220,7 @@ Maple.Server = Class(function(clientClass) {
 
                 // Add client to list and give the id to the connection
                 } else {
-                    client = new this._clientClass(this, conn);
+                    client = new this._clientClass(this, conn, !!data[1]);
                     conn.clientId = this._clients.add(client);
 
                     this._bytesSend += client.send(Maple.Message.START, [
@@ -409,10 +409,13 @@ Maple.Server = Class(function(clientClass) {
   *
   * @conn {WebSocketConnection}
   */
-Maple.Server.Client = Class(function(server, conn) {
+Maple.Server.Client = Class(function(server, conn, binary) {
+
     this.id = conn.id;
+    this.clientId = -1;
     this._conn = conn;
     this._server = server;
+    this.isBinary = binary || false;
     this._messageArray = [0, 0];
 
 }, {
@@ -440,7 +443,7 @@ Maple.Server.Client = Class(function(server, conn) {
         }
 
         // Make the message as small as possible and send it
-        return this._conn.send(BISON.encode(this._messageArray));
+        return this._conn.send(BISON.encode(this._messageArray), this.isBinary);
 
     },
 
@@ -448,7 +451,7 @@ Maple.Server.Client = Class(function(server, conn) {
       * {Integer} Sends down the raw @data {String} to the client
       */
     sendRaw: function(data) {
-        return this._conn.send(data);
+        return this._conn.send(data, this.isBinary);
     }
 
 });

@@ -48,6 +48,7 @@ Maple.Client = Class(function(update, render) {
     this._randomSeed = 0;
     this._randomState = 0;
 
+    this._isBinary = true;
     this._messageQueue = [];
     this._messageUid = 0;
     this._messageArray = [0, 0];
@@ -80,6 +81,9 @@ Maple.Client = Class(function(update, render) {
         // call `onclose()`
         try {
             this._socket = new ws('ws://' + host + (port !== undefined ? ':' + port : ''));
+            if (this._isBinary) {
+                this._socket.binaryType = 'arraybuffer';
+            }
 
         } catch(e) {
             return null;
@@ -88,11 +92,24 @@ Maple.Client = Class(function(update, render) {
         // Setup event handlers, also send intial message
         var that = this;
         this._socket.onopen = function() {
-            that.send(Maple.Message.CONNECT, [Maple.Client.$version]);
+            that.send(Maple.Message.CONNECT, [Maple.Client.$version, that._isBinary]);
         };
 
         this._socket.onmessage = function(msg) {
-            that._message(BISON.decode(msg.data), true);
+
+            var data = msg.data;
+            if (msg.data instanceof ArrayBuffer) {
+
+                var bytes = new Uint8Array(msg.data);
+                data = '';
+                for(var i = 0, l = bytes.length; i < l; i++) {
+                    data += String.fromCharCode(bytes[i]);
+                }
+
+            }
+
+            that._message(BISON.decode(data), true);
+
         };
 
         this._socket.onclose = function(msg) {
@@ -143,7 +160,21 @@ Maple.Client = Class(function(update, render) {
         }
 
         // Make the message as small as possible and send it
-        this._socket.send(BISON.encode(this._messageArray));
+        var encoded = BISON.encode(this._messageArray);
+        if (this._isBinary) {
+
+            var len = encoded.length,
+                bytes = new Uint8Array(len);
+
+            for(var i = 0; i < len; i++) {
+                bytes[i] = encoded.charCodeAt(i);
+            }
+
+            encoded = bytes.buffer;
+
+        }
+
+        this._socket.send(encoded);
 
     },
 
