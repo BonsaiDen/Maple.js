@@ -3,7 +3,7 @@ all: build/Client.js build/Server.js
 
 CLIENT_FILES = lib/bison.js lib/Class.js lib/Twist.js Maple.js Client.js
 build/Client.js: Makefile $(CLIENT_FILES)
-	echo "Packaging Client..."
+	@echo "Packaging Client..."
 	@mkdir -p build
 	@echo "" > build/Client.js
 	@for i in $(CLIENT_FILES); do \
@@ -16,7 +16,7 @@ build/Client.js: Makefile $(CLIENT_FILES)
 
 SERVER_FILES=lib/bison.js lib/Class.js lib/WebSocket.js lib/ObjectList.js Maple.js Server.js
 build/Server.js: Makefile $(SERVER_FILES)
-	echo "Packaging Server..."
+	@echo "Packaging Server..."
 	@mkdir -p build
 	@echo "(function(req) {" > build/Server.js
 	@echo "var modules = {};" >> build/Server.js
