@@ -48,7 +48,7 @@ Maple.Client = Class(function(update, render) {
     this._randomSeed = 0;
     this._randomState = 0;
 
-    this._isBinary = true;
+    this._isBinary = false;
     this._messageQueue = [];
     this._messageUid = 0;
     this._messageArray = [0, 0];
@@ -83,6 +83,7 @@ Maple.Client = Class(function(update, render) {
         // call `onclose()`
         try {
             this._socket = new ws('ws://' + host + (port !== undefined ? ':' + port : ''));
+            this._isBinary = typeof ArrayBuffer !== 'undefined' && typeof this._socket.binaryType !== 'undefined';
             if (this._isBinary) {
                 this._socket.binaryType = 'arraybuffer';
             }
