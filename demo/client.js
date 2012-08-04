@@ -27,11 +27,11 @@ var Test = Class(function() {
 }, Maple.Client, {
 
     started: function() {
-        console.log('started');
+        this.log('Client started');
     },
 
     update: function(t, tick) {
-        console.log(t, tick, this.getRandom());
+        //this.log('Running');
     },
 
     render: function(t, dt, u) {
@@ -39,24 +39,23 @@ var Test = Class(function() {
     },
 
     stopped: function() {
-        console.log('stopped');
+        this.log('Stopped');
     },
 
     connected: function() {
-        console.log('connected');
+        this.log('Connection established');
     },
 
     message: function(type, tick, data) {
-        console.log('message:', type, tick, data);
-        return true; // return true to mark this message as handled
+        this.log('Message received:', type, data);
     },
 
     syncedMessage: function(type, tick, data) {
-        console.log('synced message:', type, tick, data);
+        this.log('Synced message received:', type, data);
     },
 
     closed: function(byRemote, errorCode) {
-        console.log('Closed:', byRemote, errorCode);
+        this.log('Connection closed:', byRemote, errorCode);
     }
 
 });

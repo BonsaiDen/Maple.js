@@ -53,13 +53,15 @@ Maple.Client = Class(function(update, render) {
     this._messageUid = 0;
     this._messageArray = [0, 0];
 
+    this._messageTypes = [];
+
     this._ping = 0;
     this._lastPingTime = -2000;
     this._pingInterval = 500;
 
 }, Twist, {
 
-    $version: '0.1',
+    $version: '0.2',
 
     /**
       * {Boolean|Null} Connects with the Maple server at (@host {String} : @port {Number})
@@ -153,7 +155,7 @@ Maple.Client = Class(function(update, render) {
 
         // Add type and tick to the message
         this._messageArray.length = 2;
-        this._messageArray[0] = type;
+        this._messageArray[0] = this.messageTypeToId(type);
         this._messageArray[1] = this.getTick();
         if (data !== undefined) {
             this._messageArray.push.apply(this._messageArray, data);
@@ -225,6 +227,7 @@ Maple.Client = Class(function(update, render) {
     },
 
     _stop: function() {
+        this._messageTypes = [];
         this._socket = null;
         Twist.stop(this);
         this.stopped();
@@ -255,13 +258,21 @@ Maple.Client = Class(function(update, render) {
 
         }
 
-        // Real messages
+        // Real messages (not protocol releated)
         var type = msg[0],
             tick = msg[1],
             data = msg.slice(2);
 
         // Handle basic message which are not synced with tick counts
-        var ret = this._handleMessage(type, tick, data);
+        // But only handle these ONCE.
+        // _message will be called again for all messages left in the queue
+        // so in case something is supposed to be synced, we don't want to
+        // invoke the normal handling all the time
+        var ret = false;
+        if (initial) {
+            ret = this._handleMessage(type, tick, data);
+        }
+
         if (ret === false) {
 
             // Messages which need to be in sync with the tick count
@@ -297,6 +308,7 @@ Maple.Client = Class(function(update, render) {
                 this._logicRate = data[1];
                 this._syncRate = data[2];
                 this._randomSeed = data[3];
+                this._messageTypes = data[4];
 
                 this._serverTick = 0;
                 this._baseTick = Math.floor(tick / 250);
@@ -320,7 +332,7 @@ Maple.Client = Class(function(update, render) {
                 break;
 
             default:
-                return this.message(type, tick, data) || false;
+                return this.message(this.messageTypeFromId(type), tick, data) || false;
         }
 
         // Return true in case we handled the message
@@ -344,7 +356,7 @@ Maple.Client = Class(function(update, render) {
 
         }
 
-        this.syncedMessage(type, tick, data);
+        this.syncedMessage(this.messageTypeFromId(type), tick, data);
         return true;
 
     },
@@ -384,8 +396,8 @@ Maple.Client = Class(function(update, render) {
     /**
       * The update game callback.
       *
-      * @t {Integer} is the current game time.
-      * @tick {Integer} is the current tick count.
+      * - @t {Integer} is the current game time.
+      * - @tick {Integer} is the current tick count.
       */
     update: function(t, tick) {
 
@@ -394,15 +406,13 @@ Maple.Client = Class(function(update, render) {
     /**
       * The game render callback.
       *
-      * @t {Integer} is the current render time,
-      * @tick {Integer} is the current tick count,
-      * @dt {Integer} the time passed since the last call to {Maple.Client#update}
-      * and @u {Float} is a represensation of @dt in the range of `0...1`
+      * - @t {Integer} is the current render time,
+      * - @tick {Integer} is the current tick count,
+      * - @dt {Integer} the time passed since the last call to {Maple.Client#update} and @u {Float} is a represensation of @dt in the range of `0...1`
       */
     render: function(t, tick, dt, u) {
 
     },
-
 
     /**
       * Callback for when the "game" is stopped.
@@ -428,12 +438,13 @@ Maple.Client = Class(function(update, render) {
       * {Boolean} Callback for any messages received from the server.
       *
       * Due to the nature of the network, messages may arrive "Out of sync".
+      *
       * So you should only handle messages which are INDEPENDENT of the `tick`
       * count in this method.
       *
-      * @type {Integer} Message type
-      * @tick {Integer} Server side tick at which the message was send.
-      * @data {Array} Message data
+      * - @type {Integer} Message type
+      * - @tick {Integer} Server side tick at which the message was send.
+      * - @data {Array} Message data
       *
       * Return `true` to indicate that the messag was handled.
       *
@@ -449,9 +460,9 @@ Maple.Client = Class(function(update, render) {
       * So you should only handle messages which DEPEND of the `tick` count in
       * this method.
       *
-      * @type {Integer} Message type
-      * @tick {Integer} Server side tick at which the message was send.
-      * @data {Array} Message data
+      * - @type {Integer} Message type
+      * - @tick {Integer} Server side tick at which the message was send.
+      * - @data {Array} Message data
       *
       * Return `true` to indicate that the messag was handled.
       *
@@ -462,9 +473,9 @@ Maple.Client = Class(function(update, render) {
 
     /**
       * The callback for when an error occurs and the server terminates the
-      * connection
+      * connection.
       *
-      * @type {Integer} The Error ID from {Maple.Error}
+      * - @type {Integer} The Error ID from {Maple.Error}
       */
     error: function(type) {
 
@@ -473,8 +484,8 @@ Maple.Client = Class(function(update, render) {
     /**
       * The callback for when the connection to the server was closed.
       *
-      * @byRemote {Boolean} is `true` in case the connect was closed *by* the server.
-      * @errorCode {Integer}
+      * - @byRemote {Boolean} is `true` in case the connect was closed *by* the server.
+      * - @errorCode {Integer} Browser specific err
       */
     closed: function(byRemote, errorCode) {
 
@@ -533,6 +544,81 @@ Maple.Client = Class(function(update, render) {
     getRandom: function() {
         this._randomState = (1103515245 * (this._randomState + this._randomSeed) + 12345) % 0x100000000;
         return this._randomState / 0x100000000;
+    },
+
+
+    // Conversions ------------------------------------------------------------
+
+    /**
+      * {Integer} Converts the message @type {String|Integer} into a integer ID representing for network transmission.
+      */
+    messageTypeToId: function(type) {
+
+        if (typeof type === 'string') {
+            var id = this._messageTypes.indexOf(type);
+            if (id === -1) {
+                throw new Error('Undefined type id for "' + type + '"');
+            }
+
+            return id;
+
+        } else if (typeof type === 'number') {
+            return type;
+
+        } else {
+            this.logError('Invalid type value: "' + type + '"');
+        }
+
+    },
+
+    /**
+      * {String} Converts the message @id {Integer} into the corresponding message type string.
+      */
+    messageTypeFromId: function(id) {
+
+        if (id >= 0 && id < this._messageTypes.length) {
+            return this._messageTypes[id];
+
+        } else {
+            this.logError('Undefined type string for "' + id + '"');
+        }
+
+    },
+
+
+    // Helpers ----------------------------------------------------------------
+
+    /**
+      * {var[]} A wrapper for `console.log()` which also gives information about the current state of the server.
+      */
+    log: function() {
+        console.log.apply(console, this._log(arguments));
+    },
+
+    /**
+      * {var[]} A wrapper for `console.error()` which also gives information about the current state of the server.
+      */
+    logError: function() {
+        console.error.apply(console, this._log(arguments));
+    },
+
+    /**
+      * {var[]} A wrapper for `console.warn()` which also gives information about the current state of the server.
+      */
+    logWarning: function() {
+        console.warn.apply(console, this._log(arguments));
+    },
+
+    _log: function(args) {
+        var parts = Array.prototype.slice.call(args),
+            info = '[P: ' + this.getPing()
+                    + '  T: ' + this.getTime()
+                    + '  I: ' + this.getTick()
+                    + '  R: ' + this.getRandom() + ']\n';
+
+        parts.unshift(info);
+        parts.push('\n');
+        return parts;
     }
 
 });

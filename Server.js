@@ -23,7 +23,6 @@
 
 // Imports --------------------------------------------------------------------
 var BISON = require('./lib/bison'),
-    Class = require('./lib/Class').Class,
     ObjectList = require('./lib/ObjectList'),
     WebSocketServer = require('./lib/WebSocket'),
     Maple = require('./Maple');
@@ -31,16 +30,17 @@ var BISON = require('./lib/bison'),
 
 // Main Server ----------------------------------------------------------------
 // ----------------------------------------------------------------------------
-Maple.Server = Class(function(clientClass) {
+Maple.Server = Maple.Class(function(clientClass, messageTypes) {
 
     // Clients
     this._socket = null;
     this._clients = new ObjectList();
-    this._clientClass = clientClass || Maple.Server.Client;
+    this._clientClass = clientClass || Maple.ServerClient;
+    this._messageTypes = messageTypes || {};
 
 }, {
 
-    $version: '0.1',
+    $version: '0.2',
 
     /**
       * {Booelan} Starts the server in case it's not already running.
@@ -57,7 +57,7 @@ Maple.Server = Class(function(clientClass) {
 
         // Ticking
         this._tickTime = 0;
-        this._tickRate = options.tickRate || 33;
+        this._tickRate = Math.floor(1000 / (options.tickRate || 30));
         this._tickCount = 0;
         this._tickInterval = null;
 
@@ -109,7 +109,7 @@ Maple.Server = Class(function(clientClass) {
         // single Number for tick syncing
         if (type !== null) {
 
-            var msg = [type, this.getTick()];
+            var msg = [this.messageTypeToId(type), this.getTick()];
             if (data !== undefined) {
                 msg.push.apply(msg, data);
             }
@@ -227,7 +227,8 @@ Maple.Server = Class(function(clientClass) {
                         this._tickRate,
                         this._logicRate,
                         this._syncRate,
-                        this._randomSeed
+                        this._randomSeed,
+                        this._messageTypes
                     ]);
 
                     this.connected(client);
@@ -245,8 +246,13 @@ Maple.Server = Class(function(clientClass) {
             if (type === Maple.Message.SYNC) {
                 this._bytesSend += client.send(Maple.Message.SYNC, data);
 
-            } else if (this.message(client, type, tick, data) !== true) {
-                client.message(type, tick, data);
+            } else {
+
+                type = this.messageTypeFromId(type);
+                if (this.message(client, type, tick, data) !== true) {
+                    client.message(type, tick, data);
+                }
+
             }
 
         }
@@ -302,8 +308,8 @@ Maple.Server = Class(function(clientClass) {
     /**
       * The game update callback.
       *
-      * @t {Integer} is the current game time.
-      * @tick {Integer} is the current tick count.
+      * - @t {Integer} is the current game time.
+      * - @tick {Integer} is the current tick count.
       */
     update: function(time, tick) {
 
@@ -337,10 +343,10 @@ Maple.Server = Class(function(clientClass) {
     /**
       * {Boolean} Callback for any messages received from a @client.
       *
-      * @client {Server.Client} The client
-      * @type {Integer} Message type
-      * @tick {Integer} Client side tick at which the message was send.
-      * @data {Array} Message data
+      * - @client {Server.Client} The client
+      * - @type {Integer} Message type
+      * - @tick {Integer} Client side tick at which the message was send.
+      * - @data {Array} Message data
       *
       * Return `true` to indicate that the message was handled and prevent it
       * from being forwarded to {Maple.Client#message}.
@@ -352,7 +358,7 @@ Maple.Server = Class(function(clientClass) {
     /**
       * Handler for HTTP Request which reach the server on the port its bound to.
       *
-      * You can use this like the vanilla HTTP stuff in Node.
+      * You can use this like the vanilla HTTP interface from Node.
       */
     requested: function(req, res) {
 
@@ -399,6 +405,81 @@ Maple.Server = Class(function(clientClass) {
     getRandom: function() {
         this._randomState = (1103515245 * (this._randomState + this._randomSeed) + 12345) % 0x100000000;
         return this._randomState / 0x100000000;
+    },
+
+
+    // Conversions ------------------------------------------------------------
+
+    /**
+      * {Integer} Converts the message @type {String|Integer} into a integer ID representing for network transmission.
+      */
+    messageTypeToId: function(type) {
+
+        if (typeof type === 'string') {
+            var id = this._messageTypes.indexOf(type);
+            if (id === -1) {
+                this.logError('Undefined type id for "' + type + '"');
+            }
+
+            return id;
+
+        } else if (typeof type === 'number') {
+            return type;
+
+        } else {
+            this.logError('Invalid type value: "' + type + '"');
+        }
+
+    },
+
+    /**
+      * {String} Converts the message @id {Integer} into the corresponding message type string.
+      */
+    messageTypeFromId: function(id) {
+
+        if (id >= 0 && id < this._messageTypes.length) {
+            return this._messageTypes[id];
+
+        } else {
+            this.logError('Undefined type string for "' + id + '"');
+        }
+
+    },
+
+
+    // Helpers ----------------------------------------------------------------
+
+    /**
+      * {var[]} A wrapper for `console.log()` which also gives information about the current state of the server.
+      */
+    log: function() {
+        console.log.apply(console, this._log(arguments));
+    },
+
+    /**
+      * {var[]} A wrapper for `console.error()` which also gives information about the current state of the server.
+      */
+    logError: function() {
+        console.error.apply(console, this._log(arguments));
+    },
+
+    /**
+      * {var[]} A wrapper for `console.warn()` which also gives information about the current state of the server.
+      */
+    logWarning: function() {
+        console.warn.apply(console, this._log(arguments));
+    },
+
+    _log: function(args) {
+        var parts = Array.prototype.slice.call(args),
+            info = '[Cc: ' + this.getClients().length
+                    + '  T: ' + this.getTime()
+                    + '  I: ' + this.getTick()
+                    + '  R: ' + this.getRandom() + ']\n';
+
+        parts.unshift(info);
+        parts.push('\n');
+        return parts;
     }
 
 });
@@ -409,13 +490,13 @@ Maple.Server = Class(function(clientClass) {
   *
   * @conn {WebSocketConnection}
   */
-Maple.Server.Client = Class(function(server, conn, binary) {
+Maple.ServerClient = Maple.Class(function(server, conn, isBinary) {
 
     this.id = conn.id;
     this.clientId = -1;
     this._conn = conn;
-    this._server = server;
-    this.isBinary = binary || false;
+    this.server = server;
+    this.isBinary = isBinary || false;
     this._messageArray = [0, 0];
 
 }, {
@@ -435,8 +516,8 @@ Maple.Server.Client = Class(function(server, conn, binary) {
 
         // Add type and tick to the message
         this._messageArray.length = 2;
-        this._messageArray[0] = type;
-        this._messageArray[1] = this._server.getTick();
+        this._messageArray[0] = this.server.messageTypeToId(type);
+        this._messageArray[1] = this.server.getTick();
 
         if (data !== undefined) {
             this._messageArray.push.apply(this._messageArray, data);
