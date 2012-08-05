@@ -104,11 +104,7 @@ Maple.Client = Class(function(update, render) {
             if (msg.data instanceof ArrayBuffer) {
 
                 var bytes = new Uint8Array(msg.data);
-                data = '';
-                for(var i = 0, l = bytes.length; i < l; i++) {
-                    data += String.fromCharCode(bytes[i]);
-                }
-
+                data = String.fromCharCode.apply(null, bytes);
             }
 
             that._message(BISON.decode(data), true);
