@@ -53,7 +53,13 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
             return false;
         }
 
+        // Traffic
+        this._oldBytesSend = 0;
         this._bytesSend = 0;
+        this._bytesTime = Date.now();
+        this._bytesStats = [];
+        this._bytesStatId = 0;
+        this._bytesSendPerSecond = 0;
 
         // Ticking
         this._tickTime = 0;
@@ -291,6 +297,20 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
 
         }
 
+        if (now > this._bytesTime + 100) {
+
+            this._bytesStats[this._bytesStatId] = this._bytesSend - this._oldBytesSend;
+            this._oldBytesSend = this._bytesSend;
+            this._bytesStatId++;
+            this._bytesStatId = this._bytesStatId % 10;
+
+            this._bytesSendPerSecond = this._bytesStats.reduce(function(p, c) {
+                return p + c;
+            }) / 10;
+
+            this._bytesTime = now;
+
+        }
         this._frameTime = now;
 
     },
