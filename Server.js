@@ -249,8 +249,9 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
 
             // Handle time sync and ping detection
             // we simply echo back here
-            if (type === Maple.Message.SYNC) {
-                this._bytesSend += client.send(Maple.Message.SYNC, data);
+            if (type === Maple.Message.PING) {
+                client._ping = Math.ceil(data[1]);
+                this._bytesSend += client.send(Maple.Message.PONG, [data[0]]);
 
             } else {
 
@@ -515,6 +516,7 @@ Maple.ServerClient = Maple.Class(function(server, conn, isBinary) {
     this.id = conn.id;
     this.clientId = -1;
     this._conn = conn;
+    this._ping = 0;
     this.server = server;
     this.isBinary = isBinary || false;
     this._messageArray = [0, 0];
@@ -553,6 +555,13 @@ Maple.ServerClient = Maple.Class(function(server, conn, isBinary) {
       */
     sendRaw: function(data) {
         return this._conn.send(data, this.isBinary);
+    },
+
+    /**
+      * {Integer} Returns the ping to the server.
+      */
+    getPing: function() {
+        return this._ping;
     }
 
 });

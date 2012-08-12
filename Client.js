@@ -195,6 +195,7 @@ Maple.Client = Class(function(update, render) {
         while(ct < diff) {
 
             tick = lt + ct;
+
             if (tick > this._lastTick && tick % this._logicRate === 0) {
 
                 // Check all messages in the queue to see whether we've
@@ -216,7 +217,7 @@ Maple.Client = Class(function(update, render) {
         // Send out a ping
         var realTime = Twist.getTime(this, true);
         if (realTime - this._lastPingTime >= this._pingInterval) {
-            this.send(Maple.Message.SYNC, [realTime]);
+            this.send(Maple.Message.PING, [realTime, this._ping]);
             this._lastPingTime = realTime;
             this._pingInterval = Math.min(this._pingInterval + 500, 8000);
         }
@@ -273,7 +274,7 @@ Maple.Client = Class(function(update, render) {
         if (ret === false) {
 
             // Messages which need to be in sync with the tick count
-            // these will be processed right before the next gam tick
+            // these will be processed right before the next game tick
             if (!flush && tick > 0 && tick > this._lastTick) {
 
                 if (initial) {
@@ -324,8 +325,8 @@ Maple.Client = Class(function(update, render) {
                 this.error(data[0]);
                 break;
 
-            case Maple.Message.SYNC:
-                this._ping = (Twist.getTime(this, true) - data[0]) / 2;
+            case Maple.Message.PONG:
+                this._ping = Math.ceil((Twist.getTime(this, true) - data[0]) / 2);
                 break;
 
             default:

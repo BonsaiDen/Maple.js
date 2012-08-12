@@ -47,7 +47,7 @@ var Test = Class(function() {
     },
 
     message: function(type, tick, data) {
-        this.log('Message received:', type, data);
+        //this.log('Message received:', type, data);
     },
 
     syncedMessage: function(type, tick, data) {

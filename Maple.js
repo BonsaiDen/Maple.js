@@ -28,7 +28,8 @@
         START: -2,
         STOP: -3,
         ERROR: -4,
-        SYNC: -5
+        PING: -5,
+        PONG: -6
     };
 
     var Error = {

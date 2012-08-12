@@ -36,7 +36,9 @@ var TestServer = Maple.Class(function(clientClass) {
     },
 
     update: function(t, tick) {
-        this.broadcast('echo', ['Hello World']);
+        if (tick % 50 === 0) {
+            this.broadcast('echo', ['Server', tick, this.getRandom()]);
+        }
     },
 
     stopped: function() {
