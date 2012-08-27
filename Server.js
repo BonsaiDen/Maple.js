@@ -31,10 +31,12 @@ var BISON = require('./lib/bison'),
 // Main Server ----------------------------------------------------------------
 // ----------------------------------------------------------------------------
 Maple.Server = Maple.Class(function(clientClass, messageTypes) {
-
+	this.DEFAULT_CHANNEL = "__DEFAULT_CHANNEL";
+	
     // Clients
     this._socket = null;
-    this._clients = new ObjectList();
+    this._channels = {};
+    this._channels[this.DEFAULT_CHANNEL] = new Maple.ServerChannel(this.DEFAULT_CHANNEL, this);
     this._clientClass = clientClass || Maple.ServerClient;
     this._messageTypes = messageTypes || {};
 
@@ -128,10 +130,13 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
 
         // Fall back to everyone!
         if (!clients) {
-            clients = this._clients;
+        	clients = [];
+        	for(var g in this._channels){
+        		clients.concat(this._channels[g].getClients()._list);
+        	}
         }
 
-        this._clients.each(function(client) {
+        clients.forEach(function(client) {
 
             if (!excluded || excluded.indexOf(client) === -1) {
                 this._bytesSend += client.sendRaw(data);
@@ -139,6 +144,10 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
 
         }, this);
 
+    },
+    
+    broadcastChannel : function(type, data, channelId, excluded) {
+    	this.broadcast(type, data, this._channels[channelId].getClients()._list, excluded);
     },
 
     stop: function() {
@@ -151,9 +160,9 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
         clearInterval(this._tickInterval);
 
         this.broadcast(Maple.Message.STOP);
-        this._clients.each(function(client) {
-            client.close();
-        });
+        for(var channel in this._channels){
+        	this._channels[channel].close();
+        }
 
         if (this._socket) {
             this._socket.close();
@@ -161,6 +170,60 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
 
         return true;
 
+    },
+    
+    _assignChannel : function(client){
+    	var channel = this.assignChannel(client); 
+    	if(channel && !this._channels[channel.id]){
+    		this._channels[channel.id] = channel;
+    	}
+    	if(!channel){
+    		channel = this._channels[this.DEFAULT_CHANNEL];
+    	}
+    	return channel;
+    },
+    
+    reassignChannel : function(client, newChannelId){
+    	var oldChannelId = client._conn.channelId;
+    	if(oldChannelId){
+    		this._channels[oldChannelId].remove(client);
+    	}
+    	this._channels[newChannelId].addClient(client);
+    },
+    
+    /**
+     * Implement by returning a channel
+     * Creates if not already registered
+     * @param client the client 
+     */
+    assignChannel : function(client){
+    	//TODO implement by returning a channel
+    },
+    
+    getClientByConn : function(conn){
+    	if(conn.channelId && conn.clientId){
+    		return this.getClientByIds(conn.channelId, conn.clientId);
+    	}
+    	return null;
+    },
+    
+    getClientByIds : function(channelId, clientId){
+    	if(!channelId){
+    		channelId = this.DEFAULT_CHANNEL;
+    	}
+    	return this._channels[channelId].getClientById(clientId);
+    },
+    
+    addChannel : function(channel){
+    	this._channels[channel.id] = channel;
+    },
+    
+    getConnChannel : function(conn){
+    	return this._channels[conn.channelId];
+    },
+    
+    getChannel : function(channelId){
+    	return this._channels[channelId];
     },
 
     _createSocket: function() {
@@ -175,10 +238,10 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
         });
 
         this._socket.on('end', function(conn) {
-
-            var client = that._clients.get(conn.clientId);
-            if (client) {
-                that._clients.remove(client);
+        	var channel = that._channels[conn.channelId];
+            if (channel) {
+            	var client = channel.getClientById(conn.clientId);
+            	channel.remove(client);
                 that.disconnected(client);
             }
 
@@ -212,9 +275,11 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
         // Get message details
         var type = msg[0],
             tick = msg[1],
-            data = msg.slice(2),
-            client = this._clients.get(conn.clientId);
-
+            data = msg.slice(2);
+        
+        var channel = (!conn.channelId)?null:this._channels[conn.channelId];
+        var client = (!channel)?null:channel.getClient(conn);
+        
         // More checks for new connections
         if (type === Maple.Message.CONNECT) {
 
@@ -227,7 +292,8 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
                 // Add client to list and give the id to the connection
                 } else {
                     client = new this._clientClass(this, conn, !!data[1]);
-                    conn.clientId = this._clients.add(client);
+                    channel = this._assignChannel(client);
+                    channel.addClient(client);
 
                     this._bytesSend += client.send(Maple.Message.START, [
                         this._tickRate,
@@ -242,7 +308,9 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
 
             } else {
                 this._error(conn, Maple.Error.ALREADY_CONNECTED);
-                this._clients.remove(client);
+                if(channel){
+                	channel.remove(client);
+                }
             }
 
         } else if (client) {
@@ -409,10 +477,14 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
     },
 
     /**
-      * {ObjectList} Returns the list of currently connected clients.
+     * @param channelId the channel to seek clients. Optional
+      * {ObjectList} Returns the list of currently connected clients for a channel.
       */
-    getClients: function() {
-        return this._clients;
+    getClients: function(channelId) {
+    	if(!channelId){
+    		channelId = this.DEFAULT_CHANNEL;
+    	}
+        return this._channels[channelId].getClients();
     },
 
     /**
@@ -564,5 +636,57 @@ Maple.ServerClient = Maple.Class(function(server, conn, isBinary) {
         return this._ping;
     }
 
+});
+
+
+/**
+ * {Maple.Server.Channel} Simple channel abstraction for the Maple Server.
+ *
+ * @conn {WebSocketConnection}
+ */
+Maple.ServerChannel = Maple.Class(function(id, server) {
+
+   this.id = id;
+   this.server = server;
+   this._clients = new ObjectList();
+}, {
+
+	addClient : function(client){
+		client._conn.clientId = this._clients.add(client);
+        client._conn.channelId = this.id;
+        this.onJoin(client);
+	},
+	
+	getClients : function(){
+		return this._clients;
+	},
+	
+	getClient : function(conn){
+		return this.getClientById(conn.clientId);
+	},
+	
+	getClientById : function(clientId){
+		return this._clients.get(clientId);
+	},
+	
+	close : function(){
+		this._clients.each(function(client) {
+            client.close();
+        });
+	},
+	
+	remove : function(client){
+		this._clients.remove(client);
+		this.onLeave(client);
+	},
+	
+	onLeave : function(client){
+		//write your own impl
+	},
+	
+	onJoin : function(client){
+		//write your own impl
+	}
+	
 });
 
