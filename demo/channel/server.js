@@ -27,8 +27,8 @@ var TestServer = Maple.Class(function() {
 
     Maple.Server(this, null, [ 'channel', 'message' ]);
     
-    this.addChannel(new Maple.ServerChannel("channel1", this));
-    this.addChannel(new Maple.ServerChannel("channel2", this));
+    this.addChannel(new TestChannel("channel1", this));
+    this.addChannel(new TestChannel("channel2", this));
 
 }, Maple.Server, {
     
@@ -47,6 +47,21 @@ var TestServer = Maple.Class(function() {
     },
 });
 
+
+var TestChannel = Maple.Class(function(id, server) {
+    Maple.ServerChannel(this, id, server);
+
+}, Maple.ServerChannel, {
+
+	onJoin : function(client){
+		console.log("Client "+client._conn.clientId+" joined channel:"+client._conn.channelId);
+	},
+	
+	onLeave : function(client){
+		console.log("Client "+client._conn.clientId+" left channel:"+client._conn.channelId);
+	}
+
+});
 
 
 var srv = new TestServer();

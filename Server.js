@@ -30,13 +30,14 @@ var BISON = require('./lib/bison'),
 
 // Main Server ----------------------------------------------------------------
 // ----------------------------------------------------------------------------
-Maple.Server = Maple.Class(function(clientClass, messageTypes) {
+Maple.Server = Maple.Class(function(clientClass, messageTypes, channelClass) {
 	this.DEFAULT_CHANNEL = "__DEFAULT_CHANNEL";
 	
     // Clients
     this._socket = null;
     this._channels = {};
-    this._channels[this.DEFAULT_CHANNEL] = new Maple.ServerChannel(this.DEFAULT_CHANNEL, this);
+    this._channelClass = channelClass || Maple.ServerChannel;
+    this._channels[this.DEFAULT_CHANNEL] = new this._channelClass(this.DEFAULT_CHANNEL, this);
     this._clientClass = clientClass || Maple.ServerClient;
     this._messageTypes = messageTypes || {};
 
