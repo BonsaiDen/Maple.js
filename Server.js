@@ -131,7 +131,7 @@ Maple.Server = Maple.Class(function(clientClass, messageTypes) {
             clients = this._clients;
         }
 
-        this._clients.each(function(client) {
+        clients.each(function(client) {
 
             if (!excluded || excluded.indexOf(client) === -1) {
                 this._bytesSend += client.sendRaw(data);
