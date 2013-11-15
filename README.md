@@ -15,7 +15,7 @@ Any kind of Realtime/Round based strategy game should be do able with Maple.js.
 
 ## Demo
 
-A straigtforward demo which puts out some messages, as well as other debug infos 
+A straightforward demo which puts out some messages, as well as other debug infos 
 can be found in the `demo` directory.
 
 Running it is as easy as __1, 2, 3__:
